@@ -8,8 +8,8 @@ import datetime
 
 def get_argument():
     parser = argparse.ArgumentParser()
-    parser.add_argument('command', nargs='+', help='init/add/commit/snapshots/\
-                        index/config/status')
+    parser.add_argument('command', nargs='+', help='init/add/commit/snapshots/'
+                        'index/config/status')
     parser.add_argument('--author', action='store')
     parser.add_argument('-m', action='store')
     args = parser.parse_args()
@@ -21,64 +21,82 @@ def main():
     content_index = []
     command = args.command[0]
     author = os.environ['LOGNAME']
+    if os.path.exists('.lgit'):
+        init = 1
+    else:
+        init = 0
     if command == 'init':
         author = create_dir()
-    elif command == 'add':
-        argument = args.command[1:]
-        flag = 1
-        for item in argument:
-            if not os.path.exists(item):
-                print("fatal: pathspec '" + item +
-                      "' did not match any files")
-                flag = 0
-                break
-        if flag == 1:
+        init = 1
+    elif init == 0:
+        print('fatal: Not a git repository (or any of the parent'
+              'directories): .lgit')
+    else:
+        if command == 'add':
+            argument = args.command[1:]
+            flag = 1
             for item in argument:
-                list_index = lgit_add(item)
-                content_index = add_list(list_index, content_index)
-            write_index_content(content_index)
-    elif command == 'rm':
-        argument = args.command[1:]
-        for item in argument:
-            if not os.path.exists(item):
-                print("fatal: pathspec '" + item +
-                      "' did not match any files")
-                break
-            else:
-                update_index = remove_index(item)
-                if update_index == 0:
+                if not os.path.exists(item):
                     print("fatal: pathspec '" + item +
                           "' did not match any files")
+                    flag = 0
+                    break
+            if flag == 1:
+                for item in argument:
+                    list_index = lgit_add(item)
+                    content_index = add_list(list_index, content_index)
+                write_index_content(content_index)
+        elif command == 'rm':
+            argument = args.command[1:]
+            for item in argument:
+                if not os.path.exists(item):
+                    print("fatal: pathspec '" + item +
+                          "' did not match any files")
+                    break
                 else:
-                    write_index('\n'.join(update_index) + '\n')
-                    remove_file(item)
-    elif command == 'config':
-        author = args.author
-        config(args.author)
-    elif command == 'commit':
-        # not do fatal error of commit: not init
-        lgit_commit(args.m, author)
-    elif command == 'ls-files':
-        print_ls_files()
-    elif command == 'log':
-        lgit_log()
+                    update_index = remove_index(item)
+                    print(update_index)
+                    if update_index == 0:
+                        print("fatal: pathspec '" + item +
+                              "' did not match any files")
+                    else:
+                        write_index('\n'.join(update_index) + '\n')
+                        remove_file(item)
+        elif command == 'config':
+            author = args.author
+            config(args.author)
+        elif command == 'commit':
+            # not do fatal error of commit: not init
+            lgit_commit(args.m, author)
+        elif command == 'ls-files':
+            print_ls_files()
+        elif command == 'status':
+            status_list = get_status()
 
+# -------------------------------LGIT STATUS-----------------------------------
+def get_status():
+    status_list = [[], [], []] # [to be committed][not staged][untracked]
+    if len(os.listdir('.lgit/commits')) == 0:
+        commit = 0
+    else:
+        commit = 1
+    with open('.lgit/index', 'r') as file:
+        lines = file.readlines()
+    for line in lines:
+        line = line[:-1].split(' ')
+        line[1] = caculate_sha1_file(line[-1])
+        if line[2] != line[3]:
+            status_list[0].append(line[-1])
+        if line[1] != line[2]:
+            status_list[1].append(line[-1])
+    print(os.listdir(os.getcwd()))
+    # for dirname, dirnames, filenames in os.walk(os.getcwd()):
+    #     for filename in filenames:
+    #         for line in lines:
+    #             if filename not in line and filename not in status_list[2]:
+    #                 status_list[2].append(filename)
+    # print(status_list)
 
-# -------------------------------LGIT LS-FILES---------------------------------
-def lgit_log():
-    list_files = []
-    path = os.getcwd() + '/.lgit/commits'
-    for dirname, dirnames, filenames in os.walk(path):
-        for name in filenames:
-            list_files.append(name)
-    for i in list_files:
-        with open(path + "/" + i, "r") as file:
-            lines = file.readlines()
-        print('commit', i)
-        print('Author:', lines[0].strip())
-        time = datetime.datetime.strptime(lines[1].strip(), '%Y%m%d%H%M%S')
-        print('Date:', time.strftime('%a %b %d %H:%M:%S %Y'))
-        print('\n' + '\t' + lines[3] + '\n' + '\n')
 
 
 # -------------------------------LGIT LS-FILES---------------------------------
@@ -103,7 +121,7 @@ def print_ls_files():
     print('\n'.join(list_result))
 
 
-def check_directory(path):
+def check_directory(path): #?????
     path_dir = path
     flag = 0
     while flag != 1:
@@ -128,12 +146,14 @@ def remove_index(filename):  # find pathname_deleted in index and rm file # (2)
     flag = 0
     with open(path + "/.lgit/index", "r") as f_index:
         lines = f_index.readlines()
+    print(lines)
     for line in lines:
         path = (line.split(' ')[-1]).strip()
         if filename == path:
             flag = 1
         if filename != path:
             update_index.append(line.strip())
+            print(update_index)
     if flag == 0:
         return flag  # if not have turn 0
     else:
@@ -186,7 +206,7 @@ def lgit_commit(mess, author):
             for line in lines:
                 f.write(line.split(' ')[3] + ' ' + line.split(' ')[4])
     elif check == 0:
-        print('On branch mFile1aster')
+        print('On branch master')
         print("Your branch is up-to-date with 'origin/master'.")
         print('nothing to commit, working directory clean')
 
@@ -207,7 +227,6 @@ def write_index(content):  # write file index # (1)
 
 # -------------------------------LGIT ADD----------------------------------
 def lgit_add(file_name):
-    # split ./ from the start of file
     list_index = []
     if os.path.isdir(file_name):
         files = directory_tree_list(file_name)
@@ -240,8 +259,7 @@ def create_file_objects(filename):
     file = open(path_objects + "/" + dir_name + "/" + file_name, 'w+')
     file.write(file_content)
     file.close()
-    hash_sha2 = caculate_sha1_file(path_objects + "/" + dir_name +
-                                   "/" + file_name)
+    hash_sha2 = caculate_sha1_file(path_objects + "/" + dir_name + "/" + file_name)
     index = create_structure_index(filename, hash_sha1, hash_sha2)
     return(index)
 
@@ -298,8 +316,8 @@ def create_dir():
     if os.path.exists(path):
         print('Reinitialized existing Git repository in ' + path)
         shutil.rmtree(path)
-    # else:
-    #     print('Initialized empty Git repository in ' + path)
+    else:
+        print('Initialized empty Git repository in ' + path)
     os.mkdir(path)
     os.mkdir(path + '/commits')
     os.mkdir(path + '/objects')
