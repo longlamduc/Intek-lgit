@@ -27,11 +27,13 @@ def main():
     else:
         init = 0
     if command == 'init':
+    hash_sha1 = caculate_sha1_file(filename)
+    file_name = hash_sha1[2:]
         create_dir()
         init = 1
     elif init == 0:
-        print('fatal: Not a git repository (or any of the parent'
-              ' directories): .lgit')
+        print('fatal: not a git repository (or any of the parent'
+              ' directories)')
     else:
         if command == 'add':
             argument = args.command[1:]
@@ -367,7 +369,6 @@ def create_dir():
     if os.path.exists(path):
         print('Git repository already initialized.')
     else:
-        print('Initialized empty Git repository in ' + path)
         os.mkdir(path)
         os.mkdir(path + '/commits')
         os.mkdir(path + '/objects')
