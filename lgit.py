@@ -22,13 +22,11 @@ def main():
     content_index = []
     command = args.command[0]
     author = os.environ['LOGNAME']
-    if os.path.exists(os.getcwd() + '/.lgit'):
+    if os.path.exists('.lgit'):
         init = 1
     else:
         init = 0
     if command == 'init':
-    hash_sha1 = caculate_sha1_file(filename)
-    file_name = hash_sha1[2:]
         create_dir()
         init = 1
     elif init == 0:
@@ -117,7 +115,7 @@ def get_status():
     for dirname, dirnames, filenames in os.walk('./'):
         for filename in filenames:
             path = os.path.join(dirname, filename)
-            if '.lgit' not in path:
+            if '.lgit' not in path and '.git' not in path:
                 list_file.append(path[2:])
     for file in list_file:
         if file not in files:
@@ -147,7 +145,7 @@ def print_status(status_list, commit):
         print('Untracked files:')
         print('  (use "./lgit.py add <file>..." to include in what will'
               ' be committed)\n')
-        for x in status_list[1]:
+        for x in status_list[2]:
             print('\t' + x)
         print('\nnothing added to commit but untracked files'
               ' present (use "./lgit.py add" to track)\n')
@@ -380,6 +378,8 @@ def create_dir():
         file = open(filename_config, 'w+')
         file.write(os.environ['LOGNAME'])
         file.close()
+        status_list, commit = get_status()
+        print_status(status_list, commit)
 
 
 if __name__ == '__main__':
