@@ -77,7 +77,7 @@ def main():
         elif command == 'commit':
             # not do fatal error of commit: not init
             with open(path_lgit + '/.lgit/config', 'r') as file:
-                author = file.readline()
+                author = file.readline().strip()
             lgit_commit(path_lgit, args.m, author)
         elif command == 'ls-files':
             print_ls_files(path_lgit)
@@ -170,18 +170,19 @@ def print_status(status_list, commit):
 
 # -------------------------------LGIT LS-FILES---------------------------------
 def print_ls_files(path_lgit):
+    path = os.getcwd()
     list_file = []
     list_result = []
     with open(path_lgit + "/.lgit/index", "r") as f_index:
         lines = f_index.readlines()
-    for dirname, dirnames, filenames in os.walk(path_lgit):
+    for dirname, dirnames, filenames in os.walk(path):
         for filename in filenames:
             list_file.append(os.path.join(dirname, filename))
     for line in lines:
         path_index = (line.split(' ')[-1]).strip()
         for path1 in list_file:
             if path_index in path1:
-                index = path1.split(path_lgit)[1][1:]
+                index = path1.split(path)[-1][1:]
                 if index not in list_result:
                     list_result.append(index)
     list_result = sorted(list_result)
@@ -191,7 +192,7 @@ def print_ls_files(path_lgit):
 def check_directory(path):  # ?????
     path_dir = path
     flag = 0
-    while len(path_dir) != 0:
+    while flag != 1:
         for root, dirnames, filenames in os.walk(path_dir):
             for name in dirnames:
                 if name == '.lgit':
@@ -211,7 +212,7 @@ def remove_index(path_lgit, filename):
     # find pathname_deleted in index and rm file # (2)
     update_index = []
     flag = 0
-    with open(path + "/.lgit/index", "r") as f_index:
+    with open(path_lgit + "/.lgit/index", "r") as f_index:
         lines = f_index.readlines()
     for line in lines:
         path = (line.split(' ')[-1]).strip()
@@ -283,7 +284,7 @@ def lgit_commit(path_lgit, mess, author):
 def config(path_lgit, author):
     file = path_lgit + '/.lgit/config'
     with open(file, 'w+') as f:
-        f.write(author)
+        f.write(author + '\n')
 
 
 def write_index(path_lgit, content):  # write file index # (1)
