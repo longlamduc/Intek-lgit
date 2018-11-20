@@ -113,6 +113,9 @@ def get_status():
         if line[x][1] != line[x][2]:
             status_list[1].append(line[x][-1])
         files.append(line[x][-1])
+    with open('.lgit/index', 'w') as file:
+        for x in line:
+            file.write(' '.join(x) + '\n')
     list_file = []
     for dirname, dirnames, filenames in os.walk('./'):
         for filename in filenames:
@@ -222,7 +225,10 @@ def write_index_content(content):
             lines[i] = lines[i].strip()
             path_index = lines[i].split(' ')[-1]
             if path_name == path_index:
-                lines[i] = line_content
+                lines[i] = lines[i].split(' ')
+                lines[i][1] = lines[i][2] = line_content.split(' ')[1]
+                lines[i][0] = line_content.split(' ')[0]
+                lines[i] = ' '.join(lines[i])
                 flag = 1
         if flag == 0:
             lines.append(line_content)
@@ -319,7 +325,7 @@ def create_file_objects(filename):
 
 def add_list(list, list_add):  # (3)
     for i in list:
-        if '.lgit' not in i:
+        if '.lgit' not in i and '.git' not in i:
             list_add.append(i)
     return list_add
 
