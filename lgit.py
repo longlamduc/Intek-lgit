@@ -67,6 +67,8 @@ def main():
             config(args.author)
         elif command == 'commit':
             # not do fatal error of commit: not init
+            with open('.lgit/config', 'r') as file:
+                author = file.readline()
             lgit_commit(args.m, author)
         elif command == 'ls-files':
             print_ls_files()
@@ -378,8 +380,6 @@ def create_dir():
         file = open(filename_config, 'w+')
         file.write(os.environ['LOGNAME'])
         file.close()
-        status_list, commit = get_status()
-        print_status(status_list, commit)
 
 
 if __name__ == '__main__':
