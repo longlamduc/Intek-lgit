@@ -101,7 +101,8 @@ def lgit_log(path_lgit):
         print('Author:', lines[0].strip())
         time = datetime.datetime.strptime(lines[1].strip(), '%Y%m%d%H%M%S')
         print('Date:', time.strftime('%a %b %d %H:%M:%S %Y'))
-        print('\n\t' + lines[3] + '\n')
+        print()
+        print('\t' + lines[3] + '\n')
 
 
 # -------------------------------LGIT STATUS-----------------------------------
