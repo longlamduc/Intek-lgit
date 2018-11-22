@@ -316,7 +316,7 @@ def directory_tree_list(path):
 
 
 def create_file_objects(path_lgit, filename):
-    file_content = open(filename, 'r+').read()
+    file_content = open(filename, 'r').read()
     path_objects = path_lgit + '/.lgit/objects'
     hash_sha1 = caculate_sha1_file(filename)
     file_name = hash_sha1[2:]
@@ -340,9 +340,9 @@ def add_list(list, list_add):  # (3)
 
 
 def caculate_sha1_file(filename):
-    with open(filename, 'r') as file:
-        text = file.read()
-    hash_object = hashlib.sha1(text.encode())
+    with open(filename, 'rb') as file:
+        text = b''.join(file.readlines())
+    hash_object = hashlib.sha1(text)
     hex_dig = hash_object.hexdigest()
     return hex_dig
 
