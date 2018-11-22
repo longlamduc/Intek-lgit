@@ -94,6 +94,7 @@ def lgit_log(path_lgit):
     for dirname, dirnames, filenames in os.walk(path):
         for name in filenames:
             list_files.append(name)
+    list_files.sort(reverse=True)
     for i in list_files:
         with open(path + "/" + i, "r") as file:
             lines = file.readlines()
