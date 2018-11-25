@@ -4,7 +4,6 @@ import os
 import hashlib
 import shutil
 import datetime
-# update git init
 
 
 def get_argument():
@@ -17,75 +16,88 @@ def get_argument():
     return args
 
 
-def main():
-    args = get_argument()
-    content_index = []
-    command = args.command[0]
-    author = os.environ['LOGNAME']
-    path_dir = os.getcwd()
-    init = 0
-    flag = 0
-    while path_dir != '/' and flag == 0:
-        for root, dirnames, filenames in os.walk(path_dir):
-            if flag == 0:
-                for name in dirnames:
-                    if name == '.lgit':
-                        init = 1
-                        path_lgit = path_dir
-                        flag = 1
-                        break
-        path_dir = os.path.dirname(path_dir)
-    if command == 'init':
-        create_dir()
-        init = 1
-    elif init == 0:
-        print('fatal: not a git repository (or any of the parent'
-              ' directories)')
-    elif init == 1:
-        if command == 'add':
-            argument = args.command[1:]
-            flag = 1
-            for item in argument:
-                if not os.path.exists(item):
-                    print("fatal: pathspec '" + item +
-                          "' did not match any files")
-                    flag = 0
-                    break
-            if flag == 1:
-                for item in argument:
-                    list_index = lgit_add(path_lgit, item)
-                    content_index = add_list(list_index, content_index)
-                write_index_content(path_lgit, content_index)
-        elif command == 'rm':
-            argument = args.command[1:]
-            for item in argument:
-                if not os.path.exists(item):
-                    print("fatal: pathspec '" + item +
-                          "' did not match any files")
-                    break
-                else:
-                    update_index = remove_index(path_lgit, item)
-                    if update_index == 0:
-                        print("fatal: pathspec '" + item +
-                              "' did not match any files")
-                    else:
-                        write_index(path_lgit, '\n'.join(update_index) + '\n')
-                        remove_file(item)
-        elif command == 'config':
-            author = args.author
-            config(path_lgit, args.author)
-        elif command == 'commit':
-            # not do fatal error of commit: not init
-            with open(path_lgit + '/.lgit/config', 'r') as file:
-                author = file.readline().strip()
-            lgit_commit(path_lgit, args.m, author)
-        elif command == 'ls-files':
-            print_ls_files(path_lgit)
-        elif command == 'status':
-            status_list, commit = get_status(path_lgit)
-            print_status(status_list, commit)
-        elif command == 'log':
-            lgit_log(path_lgit)
+# -------------------------------LGIT ADD----------------------------------
+def lgit_add(path_lgit, file_name):
+    list_index = []
+    if os.path.isdir(file_name):
+        files = directory_tree_list(file_name)
+        for file in files:
+            index = create_file_objects(path_lgit, file)
+            list_index.append(index)
+    if os.path.isfile(file_name):
+        index = create_file_objects(path_lgit, file_name)
+        list_index.append(index)
+    return list_index
+
+
+def directory_tree_list(path):  # list all file in directory
+    list_file = []
+    for root, dirnames, filenames in os.walk(path):
+        for filename in filenames:
+            list_file.append(os.path.join(root, filename))
+    return list_file
+
+
+def create_file_objects(path_lgit, filename):
+    file_content = open(filename, 'r').read()
+    path_objects = path_lgit + '/.lgit/objects'
+    hash_sha1 = caculate_sha1_file(filename)
+    file_name = hash_sha1[2:]
+    dir_name = hash_sha1[:2]
+    if not os.path.exists(path_objects + "/" + dir_name):
+        os.mkdir(path_objects + "/" + dir_name)
+    file = open(path_objects + "/" + dir_name + "/" + file_name, 'w+')
+    file.write(file_content)
+    file.close()
+    index = create_structure_index(path_lgit, filename, hash_sha1, hash_sha1)
+    return(index) 
+
+
+def add_list(list, list_add):  # (3)
+    for i in list:
+        if '.lgit' not in i and '.git' not in i:
+            list_add.append(i)
+    return list_add
+
+
+def caculate_sha1_file(filename):
+    with open(filename, 'rb') as file:
+        text = b''.join(file.readlines())
+    hash_object = hashlib.sha1(text)
+    hex_dig = hash_object.hexdigest()
+    return hex_dig
+
+
+def create_structure_index(path_lgit, filename, hash1, hash2):
+    file_index = []
+    timestamp = str(get_timestamp(filename))
+    file_index.append(timestamp)
+    file_index.append(hash1)
+    file_index.append(hash2)
+    # SHA1 of the file content after commited
+    file_index.append(' ' * 40)
+    path = os.getcwd().split(path_lgit)[-1][1:]
+    if len(path) > 0:
+        path += '/'
+    if filename[:2] == './':
+        file_index.append(path + filename[2:])
+    else:
+        file_index.append(path + filename)
+    return ' '.join(file_index)
+
+
+def get_timestamp(filename):
+    t = os.path.getmtime(filename)
+    time = str(datetime.datetime.fromtimestamp(t))
+    stamp = datetime.datetime.fromtimestamp(t).timestamp() * 1000
+    list1 = time.split('.')
+    time = list1[0]
+    list_time = list(time)
+    timestamp = []
+    for i in list_time:
+        if i != '-' and i != ':' and i != ' ':
+            timestamp.append(i)
+    return(''.join(timestamp))
 
 
 def lgit_log(path_lgit):
@@ -181,7 +193,7 @@ def print_ls_files(path_lgit):
         for filename in filenames:
             list_file.append(os.path.join(dirname, filename))
     for line in lines:
-        path_index = (line.split(' ')[-1]).strip()
+        path_index = (line.split(' ')[-1]).strip()  # get path.
         for path1 in list_file:
             if path_index in path1:
                 index = path1.split(path)[-1][1:]
@@ -191,19 +203,19 @@ def print_ls_files(path_lgit):
     print('\n'.join(list_result))
 
 
-def check_directory(path):  # ?????
+def check_directory(path):  # find path have .lgit directory
     path_dir = path
     flag = 0
     while flag != 1:
         for root, dirnames, filenames in os.walk(path_dir):
             for name in dirnames:
                 if name == '.lgit':
-                    return path_dir
+                    return path_dir  # return path
         path_dir = os.path.dirname(path_dir)
 
 
 # -------------------------------LGIT RM-------------------------------------
-def remove_file(filename):
+def remove_file(filename):  # remove file with filename
     path_list = filename
     basename = os.path.basename(filename)
     if os.path.exists(filename):
@@ -295,90 +307,7 @@ def write_index(path_lgit, content):  # write file index # (1)
     f_index.close()
 
 
-# -------------------------------LGIT ADD----------------------------------
-def lgit_add(path_lgit, file_name):
-    list_index = []
-    if os.path.isdir(file_name):
-        files = directory_tree_list(file_name)
-        for file in files:
-            index = create_file_objects(path_lgit, file)
-            list_index.append(index)
-    if os.path.isfile(file_name):
-        index = create_file_objects(path_lgit, file_name)
-        list_index.append(index)
-    return list_index
 
-
-def directory_tree_list(path):
-    list_file = []
-    for dirname, dirnames, filenames in os.walk(path):
-        for filename in filenames:
-            list_file.append(os.path.join(dirname, filename))
-    return list_file
-
-
-def create_file_objects(path_lgit, filename):
-    file_content = open(filename, 'r').read()
-    path_objects = path_lgit + '/.lgit/objects'
-    hash_sha1 = caculate_sha1_file(filename)
-    file_name = hash_sha1[2:]
-    dir_name = hash_sha1[:2]
-    if not os.path.exists(path_objects + "/" + dir_name):
-        os.mkdir(path_objects + "/" + dir_name)
-    file = open(path_objects + "/" + dir_name + "/" + file_name, 'w+')
-    file.write(file_content)
-    file.close()
-    hash_sha2 = caculate_sha1_file(path_objects + "/" + dir_name + "/"
-                                   + file_name)
-    index = create_structure_index(path_lgit, filename, hash_sha1, hash_sha2)
-    return(index)
-
-
-def add_list(list, list_add):  # (3)
-    for i in list:
-        if '.lgit' not in i and '.git' not in i:
-            list_add.append(i)
-    return list_add
-
-
-def caculate_sha1_file(filename):
-    with open(filename, 'rb') as file:
-        text = b''.join(file.readlines())
-    hash_object = hashlib.sha1(text)
-    hex_dig = hash_object.hexdigest()
-    return hex_dig
-
-
-def create_structure_index(path_lgit, filename, hash1, hash2):
-    file_index = []
-    timestamp = str(get_timestamp(filename))
-    file_index.append(timestamp)
-    file_index.append(hash1)
-    file_index.append(hash2)
-    # SHA1 of the file content after commited
-    file_index.append(' ' * 40)
-    path = os.getcwd().split(path_lgit)[-1][1:]
-    if len(path) > 0:
-        path += '/'
-    if filename[:2] == './':
-        file_index.append(path + filename[2:])
-    else:
-        file_index.append(path + filename)
-    return ' '.join(file_index)
-
-
-def get_timestamp(filename):
-    t = os.path.getmtime(filename)
-    time = str(datetime.datetime.fromtimestamp(t))
-    stamp = datetime.datetime.fromtimestamp(t).timestamp() * 1000
-    list1 = time.split('.')
-    time = list1[0]
-    list_time = list(time)
-    timestamp = []
-    for i in list_time:
-        if i != '-' and i != ':' and i != ' ':
-            timestamp.append(i)
-    return(''.join(timestamp))
 
 
 # --------------------------------INIT---------------------------------
@@ -398,6 +327,83 @@ def create_dir():
         file = open(filename_config, 'w+')
         file.write(os.environ['LOGNAME'])
         file.close()
+
+
+def check_init(): # check if .lgit directory exists
+    init = 0
+    path_dir = os.getcwd()
+    while path_dir != '/' and init == 0:
+        for root, dirnames, filenames in os.walk(path_dir):
+            if init == 0:
+                for name in dirnames:
+                    if name == '.lgit':
+                        init = 1
+                        path_lgit = path_dir
+                        break
+        path_dir = os.path.dirname(path_dir)
+    return init, path_lgit
+
+def main():
+    args = get_argument()
+    content_index = []
+    command = args.command[0]
+    author = os.environ['LOGNAME']
+    init, path_lgit = check_init()
+    if command == 'init':
+        create_dir()
+        init = 1
+    elif init == 0:  # .lgit directory doesn't exist
+        print('fatal: not a git repository (or any of the parent'
+              ' directories)')
+    elif init == 1:
+        if command == 'add':
+            argument = args.command[1:]
+            flag = 1
+            for item in argument:  # check files in add list
+                if not os.path.exists(item):  # file doesn't exists
+                    print("fatal: pathspec '" + item +
+                          "' did not match any files")
+                    flag = 0
+                    break
+                elif not os.access(item, os.R_OK):  # file is not readable
+                    flag = 0
+                    print("error: open('" + item + "'): Permission denied")
+                    break
+            if flag == 1:
+                for item in argument:
+                    list_index = lgit_add(path_lgit, item)
+                    content_index = add_list(list_index, content_index)
+                write_index_content(path_lgit, content_index)
+        elif command == 'rm':
+            argument = args.command[1:]
+            for item in argument:
+                if not os.path.exists(item):
+                    print("fatal: pathspec '" + item +
+                          "' did not match any files")
+                    break
+                else:
+                    update_index = remove_index(path_lgit, item)
+                    if update_index == 0:
+                        print("fatal: pathspec '" + item +
+                              "' did not match any files")
+                    else:
+                        write_index(path_lgit, '\n'.join(update_index) + '\n')
+                        remove_file(item)
+        elif command == 'config':
+            author = args.author
+            config(path_lgit, args.author)
+        elif command == 'commit':
+            # not do fatal error of commit: not init
+            with open(path_lgit + '/.lgit/config', 'r') as file:
+                author = file.readline().strip()
+            lgit_commit(path_lgit, args.m, author)
+        elif command == 'ls-files':
+            print_ls_files(path_lgit)
+        elif command == 'status':
+            status_list, commit = get_status(path_lgit)
+            print_status(status_list, commit)
+        elif command == 'log':
+            lgit_log(path_lgit)
 
 
 if __name__ == '__main__':
